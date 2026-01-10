@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logsentinel"
+version = "0.1.0"
+description = "Lightweight log security analyzer and threat detector"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Noureddine Rahmouni" }
+]
+
+dependencies = []
+
+[project.scripts]
+logsentinel = "logsentinel.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["logsentinel*"]
