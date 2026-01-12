@@ -200,7 +200,7 @@ def scan_log_file(log_file_path: Path) -> int:
         )
         return 0
 
-    # TODO: Integrate with logsentinel.engine when available
+    # TODO(mark): Integrate with logsentinel.engine when available
     # For now, this is a placeholder that validates the file is readable
     # In production, this would call:
     #   from logsentinel.engine import Engine
@@ -337,16 +337,6 @@ def main(args: list[str] | None = None) -> int:
             # Handle specific system-level errors that might occur
             print(
                 f"System error: {e}",
-                file=sys.stderr,
-            )
-            return ExitCode.GENERAL_ERROR
-        except Exception as e:
-            # Catch-all for truly unexpected errors
-            # This is intentional: we want to handle ANY error gracefully
-            # rather than crashing. In production, this should be logged
-            # to a monitoring system for investigation.
-            print(
-                f"Unexpected error: {type(e).__name__}: {e}",
                 file=sys.stderr,
             )
             return ExitCode.GENERAL_ERROR
