@@ -24,6 +24,8 @@ import sys
 from enum import IntEnum
 from pathlib import Path
 from typing import NoReturn
+from logsentinel.engine.engine import scan_lines
+from logsentinel.engine.models import ScanResult
 
 
 class ExitCode(IntEnum):
@@ -200,21 +202,33 @@ def scan_log_file(log_file_path: Path) -> int:
         )
         return 0
 
-    # TODO(mark): Integrate with logsentinel.engine when available
-    # For now, this is a placeholder that validates the file is readable
-    # In production, this would call:
-    #   from logsentinel.engine import Engine
-    #   engine = Engine()
-    #   results = engine.scan(log_lines)
-    #   report = generate_report(results)
-    #   return len(results.threats)
+        # --- Engine integration ---
+    try:
+        result: ScanResult = scan_lines(log_lines)
+    except Exception as e:
+        raise CLIError(
+            f"Engine processing error: {e}",
+            ExitCode.GENERAL_ERROR,
+        ) from e
 
-    print(
-        f"Scanned {len(log_lines)} log entries from {log_file_path}",
-        file=sys.stdout,
-    )
+    # --- Reporting (console V1) ---
+    print(f"Scanned entries : {result.total_entries}")
+    print(f"Threats found   : {result.threat_count}")
+    print(f"Highest level   : {result.highest_level().name}")
 
-    return 0
+    print("\nSummary by level:")
+    for level, count in result.summary_by_level().items():
+        print(f"  - {level.name:<8} : {count}")
+
+    if result.threats:
+        print("\nDetected threats:")
+        for idx, t in enumerate(result.threats, start=1):
+            print(
+                f"[{idx}] {t.level.name} | {t.rule_id} | "
+                f"{t.log_entry.timestamp} | {t.description}"
+            )
+
+    return result.threat_count
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
