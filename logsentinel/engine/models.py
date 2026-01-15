@@ -1,3 +1,5 @@
+# logsentinel/engine/models.py
+
 """Data models for the log scanning engine.
 
 This module defines strongly typed data structures used throughout the
@@ -5,6 +7,7 @@ log scanning engine, including log entries, threat levels, detections,
 and scan results.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import List, Dict, Any
@@ -58,15 +61,28 @@ class Threat:
     rule_id: str
     description: str
     level: ThreatLevel
-    line_number: int
+    log_entry: LogEntry
 
-    def to_dict(self) -> dict:
-        """Convert the threat to a dictionary representation."""
+    def to_dict(self: Any) -> dict:
+        """
+        Convert the Threat instance to a dictionary representation.
+
+        Returns:
+            dict: A dictionary containing the rule ID, description,
+                threat level (as a string),
+                and details about the corresponding log entry.
+        """
         return {
             "rule_id": self.rule_id,
             "description": self.description,
             "level": self.level.name,
-            "line_number": self.line_number,
+            "log": {
+                "timestamp": self.log_entry.timestamp.isoformat(),
+                "source": self.log_entry.source,
+                "message": self.log_entry.message,
+                "raw": self.log_entry.raw,
+                "fields": self.log_entry.fields,
+            },
         }
 
 
@@ -93,12 +109,29 @@ class ScanResult:
             return ThreatLevel.INFO
         return max(t.level for t in self.threats)
 
-    def summary_by_level(self) -> dict:
-        """Get a summary of the threats found in the scan by severity level."""
-        summary: dict[ThreatLevel, int] = {lvl: 0 for lvl in ThreatLevel}
-        for threat in self.threats:
-            summary[threat.level] += 1
-        return summary
+    def summary_by_level(self) -> dict[ThreatLevel, int]:
+        """
+        Summarize the number of threats by their severity level.
+
+        Returns:
+            dict[ThreatLevel, int]: A dictionary mapping
+            each ThreatLevel to the number of threats detected
+            at that level within this scan result.
+        """
+        counter = Counter(t.level for t in self.threats)
+        return dict(counter)
+
+    @classmethod
+    def from_threats(
+        cls,
+        threats: list[Threat],
+        total_entries: int,
+    ) -> "ScanResult":
+        """Factory method to build ScanResult from detected threats."""
+        return cls(
+            total_entries=total_entries,
+            threats=threats,
+        )
 
     def to_dict(self) -> dict:
         """Convert the scan result to a dictionary representation."""
