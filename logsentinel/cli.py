@@ -24,8 +24,8 @@ import sys
 from enum import IntEnum
 from pathlib import Path
 from typing import NoReturn
-from logsentinel.engine.engine import scan_lines
 from logsentinel.engine.models import ScanResult
+from logsentinel.engine.engine import scan_file
 
 
 class ExitCode(IntEnum):
@@ -165,46 +165,17 @@ def read_log_file_safely(file_path: Path) -> list[str]:
 
 
 def scan_log_file(log_file_path: Path) -> int:
-    """Scan a log file for threats.
+    """Scan a log file for threats using the analysis engine."""
 
-    This function orchestrates the scanning process:
-    1. Validates the file
-    2. Reads the file safely
-    3. Processes through the analysis engine (to be implemented)
-    4. Generates a report (to be implemented)
-
-    Args:
-        log_file_path: Path to the log file to scan.
-
-    Returns:
-        Number of threats detected (0 for now, until engine is implemented).
-
-    Raises:
-        CLIError: If scanning fails at any stage.
-    """
     validate_log_file_path(log_file_path)
 
+    # --- Engine integration ---
     try:
-        log_lines = read_log_file_safely(log_file_path)
-    except CLIError:
-        raise
-    except Exception as e:
-        # Catch-all for unexpected errors
-        raise CLIError(
-            f"Unexpected error while reading log file: {e}",
-            ExitCode.GENERAL_ERROR,
-        ) from e
-
-    if not log_lines:
-        print(
-            f"Warning: No log entries found in {log_file_path}",
-            file=sys.stderr,
-        )
-        return 0
-
-        # --- Engine integration ---
-    try:
-        result: ScanResult = scan_lines(log_lines)
+        result: ScanResult = scan_file(log_file_path)
+    except FileNotFoundError as e:
+        raise CLIError(str(e), ExitCode.FILE_NOT_FOUND) from e
+    except PermissionError as e:
+        raise CLIError(str(e), ExitCode.PERMISSION_DENIED) from e
     except Exception as e:
         raise CLIError(
             f"Engine processing error: {e}",
