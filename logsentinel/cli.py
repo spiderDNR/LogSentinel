@@ -18,6 +18,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import json
 import argparse
 import os
 import sys
@@ -164,7 +165,7 @@ def read_log_file_safely(file_path: Path) -> list[str]:
     return lines
 
 
-def scan_log_file(log_file_path: Path) -> int:
+def scan_log_file(log_file_path: Path, output_format: str) -> int:
     """Scan a log file for threats using the analysis engine."""
 
     validate_log_file_path(log_file_path)
@@ -198,6 +199,26 @@ def scan_log_file(log_file_path: Path) -> int:
                 f"[{idx}] {t.level.name} | {t.rule_id} | "
                 f"{t.log_entry.timestamp} | {t.description}"
             )
+    # --- Reporting (console / json) ---
+
+    if output_format == "json":
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(f"Scanned entries : {result.total_entries}")
+        print(f"Threats found   : {result.threat_count}")
+        print(f"Highest level   : {result.highest_level().name}")
+
+        print("\nSummary by level:")
+        for level, count in result.summary_by_level().items():
+            print(f"  - {level.name:<8} : {count}")
+
+        if result.threats:
+            print("\nDetected threats:")
+            for idx, t in enumerate(result.threats, start=1):
+                print(
+                    f"[{idx}] {t.level.name} | {t.rule_id} | "
+                    f"{t.log_entry.timestamp} | {t.description}"
+                )
 
     return result.threat_count
 
@@ -243,6 +264,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path to the log file to scan",
         metavar="<logfile>",
+    )
+    scan_parser.add_argument(
+        "--format",
+        choices=["console", "json"],
+        default="console",
+        help="Output format (console or json)",
     )
 
     return parser
@@ -298,12 +325,16 @@ def main(args: list[str] | None = None) -> int:
     except CLIError as e:
         print(f"Error: {e.message}", file=sys.stderr)
         return e.exit_code
+    output_format = parsed_args.format
 
     if parsed_args.command == "scan":
         log_file_path = Path(parsed_args.logfile)
+        output_format = parsed_args.format
 
         try:
-            threat_count = scan_log_file(log_file_path)
+            # threat_count = scan_log_file(log_file_path)
+            threat_count = scan_log_file(log_file_path, output_format)
+
             if threat_count > 0:
                 print(
                     f"Warning: {threat_count} potential threat(s) detected",

@@ -63,7 +63,7 @@ class Threat:
     level: ThreatLevel
     log_entry: LogEntry
 
-    def to_dict(self: Any) -> dict:
+    def to_dict(self) -> dict:
         """
         Convert the Threat instance to a dictionary representation.
 
